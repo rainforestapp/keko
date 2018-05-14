@@ -1,27 +1,49 @@
 # keko
 
-TODO: Write a description here
+```
+Keko: Kemal + Echo
+```
+
+Your friendly echo server written in [Crystal](https://crystal-lang.org).
+
 
 ## Installation
 
-TODO: Write installation instructions here
+- [Install Crystal](https://crystal-lang.org/docs/installation/)
+
+- Clone the repo and install dependencies:
+
+```bash
+git clone https://github.com/rainforestapp/keko
+cd keko
+shards install
+```
 
 ## Usage
 
-TODO: Write usage instructions here
+### Development
+
+```bash
+crystal src/keko.cr
+```
+
+Send a request with payload via curl
+
+```
+curl -X POST -F 'name=serdar' -F 'password=1234' http://localhost:3000
+```
+
+### Release
+
+```bash
+shards build --release
+./bin/keko
+```
 
 ## Development
 
-TODO: Write development instructions here
+Run the specs to make sure everything is working.
 
-## Contributing
-
-1. Fork it ( https://github.com/[your-github-name]/keko/fork )
-2. Create your feature branch (git checkout -b my-new-feature)
-3. Commit your changes (git commit -am 'Add some feature')
-4. Push to the branch (git push origin my-new-feature)
-5. Create a new Pull Request
-
-## Contributors
-
-- [[your-github-name]](https://github.com/[your-github-name]) Serdar Dogruyol - creator, maintainer
+```bash
+KEMAL_ENV=test crystal spec
+```
