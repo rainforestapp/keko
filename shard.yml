@@ -1,0 +1,19 @@
+name: keko
+version: 0.1.0
+
+authors:
+  - Serdar Dogruyol <dogruyolserdar@gmail.com>
+
+dependencies:
+  kemal:
+    github: kemalcr/kemal
+  spec-kemal:
+    github: kemalcr/spec-kemal
+
+targets:
+  keko:
+    main: src/keko.cr
+
+crystal: 0.24.2
+
+license: MIT
