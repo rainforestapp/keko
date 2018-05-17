@@ -23,14 +23,15 @@ post "/**" do |env|
 end
 
 def parse_request(env)
+  parse_headers(env)
   if env.request.headers["Content-Type"]?.try(&.starts_with?("application/json"))
-    parse_json(env)
+    parse_json_body(env)
   else
-    parse_form(env)
+    parse_form_body(env)
   end
 end
 
-def parse_form(env)
+def parse_form_body(env)
   hash = Hash(String, String).new
 
   env.params.body.map do |key, value|
@@ -40,7 +41,7 @@ def parse_form(env)
   hash.to_json
 end
 
-def parse_json(env)
+def parse_json_body(env)
   hash = Hash(String, AllParamTypes).new
 
   env.params.json.map do |key, value|
@@ -48,6 +49,13 @@ def parse_json(env)
   end
 
   hash.to_json
+end
+
+def parse_headers(env)
+  env.request.headers.each do |k, v|
+    next if k.downcase == "content-type"
+    env.response.headers[k] = v
+  end
 end
 
 Kemal.run
