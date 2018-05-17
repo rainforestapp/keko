@@ -1,0 +1,81 @@
+version: 2
+
+jobs:
+  test:
+    parallelism: 1
+    docker:
+      - image: crystallang/crystal:0.24.2
+        environment:
+          KEMAL_ENV: test
+    steps:
+      - checkout
+      - run:
+          name: Install shards
+          command: |
+            shards
+      - run:
+          name: Spec
+          command: |
+            crystal spec
+
+  merge_to_master:
+    docker:
+      - image: rainforestapp/circlemator:latest
+    steps:
+      - run:
+          name: Merge to master
+          command: circlemator self-merge --base-branch=master --compare-branch=develop
+
+  deploy_stg:
+    docker:
+      - image: rainforestapp/heroku-deploy:latest
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "20:ba:56:70:88:ec:9e:ea:32:b6:e3:2f:07:1c:67:29"
+      - run:
+          name: Deploy to staging
+          command: /scripts/deploy.sh keko-stg
+          no_output_timeout: 15m
+
+  deploy_prd:
+    docker:
+      - image: rainforestapp/heroku-deploy:latest
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints:
+            - "20:ba:56:70:88:ec:9e:ea:32:b6:e3:2f:07:1c:67:29"
+      - run:
+          name: Deploy to production
+          command: /scripts/deploy.sh keko-prd
+          no_output_timeout: 15m
+
+workflows:
+  version: 2
+  test_and_deploy:
+    jobs:
+      - deploy_stg:
+          filters:
+            branches:
+              only:
+                - develop
+      - deploy_prd:
+          filters:
+            branches:
+              only:
+                - master
+      - test:
+          filters:
+            branches:
+              ignore:
+                - master
+      - merge_to_master:
+          requires:
+            - deploy_stg
+            - test
+          filters:
+            branches:
+              only:
+                - develop
