@@ -1,5 +1,20 @@
 version: 2
 
+steps:
+  - &build_dependencies
+    run:
+      name: install dependencies
+      command: |
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get install -y tzdata gcc pkg-config libssl-dev libxml2-dev libyaml-dev libgmp-dev git make && \
+        apt-get install -y libpcre3-dev libevent-dev
+        apt-get install -y libssh2-1-dev liblzma-dev libicu-dev
+
+        # For FPM to build a package
+        apt-get install -y ruby ruby-dev
+        gem install fpm --no-ri --no-rdoc
+
 jobs:
   test:
     parallelism: 1
@@ -52,10 +67,61 @@ jobs:
           command: /scripts/deploy.sh keko-prd
           no_output_timeout: 15m
 
+  build:
+    docker:
+      - image: ubuntu:bionic
+    working_directory: /home/keko
+    steps:
+      - *build_dependencies
+      - checkout
+      - run: dpkg -i --force-bad-version /home/keko/docker/*.deb
+      - run:
+          name: Fetch Keko dependencies
+          command: shards install
+      - run:
+          name: Build Keko
+          command: |
+            shards build \
+              --link-flags "-l:libssh2.a -l:libssl.a -l:libgcrypt.a -l:libgpg-error.a -l:libcrypto.a" \
+              --link-flags "-l:libxml2.a -l:libicuuc.a -l:libicudata.a -l:liblzma.a -l:libstdc++.a -l:libz.a" \
+              --link-flags "-l:libevent.a -lrt -lpthread"
+      - run:
+          name: Build Debian Package
+          command: |
+            cd /home/keko/bin
+            fpm \
+              -t deb                                          \
+              -s dir                                          \
+              -n keko-dev                                     \
+              -v $CIRCLE_BUILD_NUM                            \
+              --url http://www.github.com/rainforestapp/keko  \
+              --prefix /usr/bin                               \
+              keko
+      - persist_to_workspace:
+          root: /home/keko/bin/
+          paths: .
+      - store_artifacts:
+          path: /home/keko/bin/
+          destination: /
+
+  publish:
+    docker:
+      - image: circleci/ruby:2.5.3-node
+    working_directory: /tmp/keko/
+    steps:
+      - attach_workspace:
+          at: /tmp/keko/
+      - run:
+          name: upload .deb file
+          command: |
+            #curl -F p1=@$(ls *.deb | head -n1) https://push.fury.io/5xqfNgxSP9zLJf87MC3k/
+            #curl -F p1=@$(ls *.deb | head -n1) https://${GEMFURY_TOKEN}@push.fury.io/opsrfqa/
+
 workflows:
   version: 2
   test_and_deploy:
     jobs:
+      - build
       - deploy_stg:
           filters:
             branches:
@@ -79,3 +145,10 @@ workflows:
             branches:
               only:
                 - develop
+      - publish:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - master
